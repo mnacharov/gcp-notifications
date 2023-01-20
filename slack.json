@@ -1,0 +1,29 @@
+[
+    {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": "{{ printf "%s" .Data }}\n`{{ index .Attributes "payload" | js }}`"
+        }
+    },
+    {
+        "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+          "type": "mrkdwn",
+          "text": "Google Cloud console"
+      },
+      "accessory": {
+          "type": "button",
+          "text": {
+              "type": "plain_text",
+              "text": "{{ index .Attributes "cluster_name" }}"
+          },
+          "value": "open",
+          "url": "https://console.cloud.google.com/kubernetes/clusters/details/{{ index .Attributes "cluster_location" }}/{{ index .Attributes "cluster_name" }}/details?project={{ index .Attributes "project_id" }}",
+          "action_id": "button-action"
+      }
+    }
+]

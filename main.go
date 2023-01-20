@@ -3,10 +3,16 @@ package main
 import (
 	"bytes"
 	"cloud.google.com/go/pubsub"
+	"github.com/slack-go/slack"
 	"context"
 	"fmt"
 	"log"
 	"os"
+	"text/template"
+)
+
+const (
+	fallbackSlackTemplate = `[{"type":"section","text":{"type":"plain","text":"{{ printf "%s" .Data }}"}}]`
 )
 
 
@@ -26,13 +32,17 @@ func main() {
 		log.Fatal("SLACK_WEBHOOK_URL must be set")
 		return
 	}
-	err := subscribe(projectID, subID, slackWebhookUrl)
+	tmpl, err := template.ParseFiles("slack.json")
+	if err != nil {
+		tmpl = template.Must(template.New("slack").Parse(fallbackSlackTemplate))
+	}
+	err = subscribe(projectID, subID, slackWebhookUrl, tmpl)
 	if err != nil {
 		log.Printf("Receive: %v \n", err)
 	}	
 }
 
-func subscribe(proj string, subID string, slack string) error {
+func subscribe(proj string, subID string, slackWebhook string, tmpl *template.Template) error {
         ctx := context.Background()
 	client, err := pubsub.NewClient(ctx, proj)
 	if err != nil {
@@ -41,8 +51,12 @@ func subscribe(proj string, subID string, slack string) error {
 	defer client.Close()
 	sub := client.Subscription(subID)
 	err = sub.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		msg := formatMessage(m)
-		sendSlack(slack, msg)
+		msg, err := formatMessage(m, tmpl)
+		if err != nil {
+			m.Nack()
+			log.Fatalf("failed to write Slack message: %v", err)
+		}
+		slack.PostWebhook(slackWebhook, msg)
 		if err == nil {
 			m.Ack()
 		} else {
@@ -55,11 +69,27 @@ func subscribe(proj string, subID string, slack string) error {
 	return nil
 }
 
-func formatMessage(m *pubsub.Message) string {
-	var buff bytes.Buffer
-	buff.Write(m.Data)
-	for k, v := range m.Attributes {
-		buff.WriteString(fmt.Sprintf("\n\t%s:\t%s", k, v))
+func formatMessage(m *pubsub.Message, tmpl *template.Template) (*slack.WebhookMessage, error) {
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, m); err != nil {
+		return nil, err
 	}
-	return buff.String()
+	var blocks slack.Blocks
+	err := blocks.UnmarshalJSON(buf.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal templating JSON: %w", err)
+	}
+
+	var clr string
+	switch m.Attributes["type_url"] {
+	case "type.googleapis.com/google.container.v1beta1.UpgradeAvailableEvent":
+		clr = "good"
+	case "type.googleapis.com/google.container.v1beta1.UpgradeEvent":
+		clr = "warning"
+	case "type.googleapis.com/google.container.v1beta1.SecurityBulletinEvent":
+		clr = ":exclamation:"
+	default:
+		clr = "danger"
+	}
+	return &slack.WebhookMessage{Attachments: []slack.Attachment{{Color: clr}}, Blocks: &blocks}, nil
 }

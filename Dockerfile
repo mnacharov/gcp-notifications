@@ -1,11 +1,15 @@
-FROM golang:1.19.5-bullseye
+FROM golang:1.19.5-bullseye as build
 
-WORKDIR /usr/src/gcp-notifications
-
+WORKDIR /go/src/gcp-notifications
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
-RUN go build -v -o /usr/local/bin/gcp-notifications ./...
+RUN CGO_ENABLED=0 go build -v -o /go/bin/gcp-notifications ./...
 
-CMD ["/usr/local/bin/gcp-notifications"]
+
+FROM gcr.io/distroless/static-debian11:latest
+
+COPY --from=build /go/bin/gcp-notifications /go/src/gcp-notifications/slack.json /
+
+CMD ["/gcp-notifications"]
