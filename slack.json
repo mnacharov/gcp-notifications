@@ -2,8 +2,15 @@
     {
         "type": "section",
         "text": {
+            "type": "plain_text",
+            "text": {{ printf "%q" .Data }}
+        }
+    },
+    {
+        "type": "section",
+        "text": {
             "type": "mrkdwn",
-            "text": "{{ printf "%s" .Data }}\n`{{ index .Attributes "payload" | js }}`"
+            "text": "`{{ index .Attributes "payload" | js }}`"
         }
     },
     {
@@ -12,7 +19,7 @@
     {
       "type": "section",
       "text": {
-          "type": "mrkdwn",
+          "type": "plain_text",
           "text": "Google Cloud console"
       },
       "accessory": {
