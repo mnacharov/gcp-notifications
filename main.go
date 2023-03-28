@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	fallbackSlackTemplate = `[{"type":"section","text":{"type":"plain","text":"{{ printf "%s" .Data }}"}}]`
+	fallbackSlackTemplate = `[{"type":"section","text":{"type":"plain","text":{{ printf "%q" .Data }}}}]`
 )
 
 
