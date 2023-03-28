@@ -2,17 +2,21 @@
     {
         "type": "section",
         "text": {
-            "type": "mrkdwn",
-            "text": "{{ printf "%s" .Data }}\n`{{ index .Attributes "payload" | js }}`"
+            "type": "plain_text",
+            "text": {{ printf "%q" .Data }}
         }
     },
+    {   "type": "section"
+        "text": {
+            "type": "mrkdwn"
+            "text": "`{{ index .Attributes "payload" | js }}`"
     {
         "type": "divider"
     },
     {
       "type": "section",
       "text": {
-          "type": "mrkdwn",
+          "type": "plain_text",
           "text": "Google Cloud console"
       },
       "accessory": {
